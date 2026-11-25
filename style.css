@@ -25,3 +25,9 @@ li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 
 li:first-child { border-top: 0; }
 li .t { flex: 1; min-width: 0; }
 li .t b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+li.track img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; background: #000; }
+li.track.on { outline: 2px solid #4f7cff; border-radius: 8px; }
+li.track .map { display: none; margin-top: 8px; }
+li.track.on .map { display: block; }
+li.track .map input[type=text] { margin-bottom: 8px; }
+li.track .map label { margin-bottom: 8px; }
