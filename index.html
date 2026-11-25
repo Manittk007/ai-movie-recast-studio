@@ -65,7 +65,17 @@
       </select>
     </label>
     <p id="estimate" class="info"></p>
-    <p class="msg">Settings are saved on this phone. Face selection and processing arrive in the next files.</p>
+        <button id="analyzeBtn">Find faces (first 10 seconds)</button>
+    <progress id="anProg" max="100" value="0" hidden></progress>
+    <p id="anMsg" class="msg"></p>
+  </div>
+
+  <div class="card" id="facesCard" hidden>
+    <h3>Faces found</h3>
+    <p class="info">Tap a face, add a reference photo of a consenting person, then save.</p>
+    <ul id="tracks"></ul>
+    <button id="saveMap">Save character mappings</button>
+    <p id="mapMsg" class="msg"></p>
   </div>
 </section>
 
