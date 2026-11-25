@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Movie Recast Studio</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header><span class="logo">🎬</span><h1>AI Movie Recast Studio</h1></header>
+<main>
+
+<section id="home" class="screen">
+  <div class="card">
+    <h2>New project</h2>
+    <label>Project name
+      <input id="name" type="text" maxlength="60" placeholder="My clip">
+    </label>
+    <label>Video file
+      <input id="videoFile" type="file" accept="video/*">
+    </label>
+    <label class="check">
+      <input id="consentVideo" type="checkbox">
+      <span>I have the right to edit this footage, and I will label the result as AI-generated.</span>
+    </label>
+    <button id="startBtn">Start new project</button>
+    <progress id="upProg" max="100" value="0" hidden></progress>
+    <p id="homeMsg" class="msg"></p>
+  </div>
+  <div class="card">
+    <h2>Previous projects</h2>
+    <ul id="projects"></ul>
+  </div>
+</section>
+
+<section id="video" class="screen" hidden>
+  <button id="backBtn" class="link">← Back</button>
+  <h2 id="vTitle"></h2>
+  <video id="player" controls playsinline preload="metadata"></video>
+  <p id="vInfo" class="info"></p>
+
+  <div class="card">
+    <h3>Pick a frame</h3>
+    <img id="frameImg" alt="Frame preview">
+    <input id="frameSlider" type="range" min="0" max="0" step="0.1" value="0">
+    <p id="frameTime" class="info"></p>
+  </div>
+
+  <div class="card">
+    <h3>Processing settings</h3>
+    <label>Resolution (height)
+      <select id="resSel">
+        <option value="360">360p (fastest)</option>
+        <option value="480" selected>480p</option>
+        <option value="540">540p</option>
+        <option value="720">720p (slowest)</option>
+      </select>
+    </label>
+    <label>Frame rate
+      <select id="fpsSel">
+        <option value="0">Same as original</option>
+        <option value="24">24 fps</option>
+        <option value="15">15 fps</option>
+        <option value="12">12 fps</option>
+      </select>
+    </label>
+    <p id="estimate" class="info"></p>
+    <p class="msg">Settings are saved on this phone. Face selection and processing arrive in the next files.</p>
+  </div>
+</section>
+
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
