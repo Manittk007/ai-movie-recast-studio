@@ -12,7 +12,9 @@ import uuid
 from pathlib import Path
 
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
-
+import analyze as analyzer
+import mapping as mapper
+import threading
 BASE = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("RECAST_DATA", Path.home() / "recast_data"))
 DATA.mkdir(parents=True, exist_ok=True)
@@ -189,7 +191,63 @@ def get_ref(pid, name):
     p = project_dir(pid)
     return send_from_directory(p / "refs", name)
 
+# ---------- analysis and mappings ----------
+JOBS = {}
 
+
+@app.post("/api/projects/<pid>/analyze")
+def start_analyze(pid):
+    p = project_dir(pid)
+    if JOBS.get(pid, {}).get("state") == "running":
+        return jsonify(error="Analysis already running."), 409
+    m = read_meta(p)
+    # Quick test mode: first 10 seconds only, unless full=1
+    full = request.args.get("full") == "1"
+    dur = None if full else min(10.0, m["info"]["duration"])
+    JOBS[pid] = {"state": "running", "done": 0, "total": 1, "error": ""}
+
+    def run():
+        try:
+            def prog(a, b):
+                JOBS[pid].update(done=a, total=b)
+            analyzer.analyze(pid, 0.0, dur, prog)
+            JOBS[pid]["state"] = "done"
+        except Exception as e:
+            JOBS[pid].update(state="error", error=str(e))
+
+    threading.Thread(target=run, daemon=True).start()
+    return jsonify(ok=True)
+
+
+@app.get("/api/projects/<pid>/analyze")
+def analyze_status(pid):
+    p = project_dir(pid)
+    job = JOBS.get(pid, {"state": "idle", "done": 0, "total": 1, "error": ""})
+    out = dict(job)
+    f = p / "tracks.json"
+    out["tracks"] = json.loads(f.read_text())["tracks"] if f.exists() else []
+    return jsonify(out)
+
+
+@app.get("/api/projects/<pid>/thumbs/<name>")
+def get_thumb(pid, name):
+    p = project_dir(pid)
+    return send_from_directory(p / "thumbs", name, max_age=0)
+
+
+@app.get("/api/projects/<pid>/mappings")
+def get_mappings(pid):
+    return jsonify(mapper.load(project_dir(pid)))
+
+
+@app.put("/api/projects/<pid>/mappings")
+def put_mappings(pid):
+    p = project_dir(pid)
+    try:
+        saved = mapper.save(p, request.get_json(force=True) or [], p / "refs")
+    except (ValueError, KeyError, TypeError) as e:
+        return jsonify(error=str(e)), 400
+    return jsonify(saved)
 if __name__ == "__main__":
     print("Open http://127.0.0.1:8080 in your phone browser")
     app.run(host="127.0.0.1", port=8080, threaded=True)
