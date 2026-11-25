@@ -146,3 +146,110 @@ $("backBtn").onclick = () => {
 };
 
 loadProjects();
+// ---------- face selection ----------
+let trackMaps = {}; // track id -> {ref, label, consent}
+
+$("analyzeBtn").onclick = async () => {
+  $("anMsg").textContent = "";
+  try { await api("/api/projects/" + current.id + "/analyze", { method: "POST" }); }
+  catch (e) { $("anMsg").textContent = e.message; return; }
+  const pid = current.id;
+  $("analyzeBtn").disabled = true;
+  $("anProg").hidden = false;
+  const timer = setInterval(async () => {
+    if (!current || current.id !== pid) { clearInterval(timer); return; }
+    let s;
+    try { s = await api("/api/projects/" + pid + "/analyze"); }
+    catch (e) { clearInterval(timer); $("anMsg").textContent = e.message; $("analyzeBtn").disabled = false; return; }
+    $("anProg").value = (s.done / s.total) * 100;
+    if (s.state === "done" || s.state === "error") {
+      clearInterval(timer);
+      $("analyzeBtn").disabled = false;
+      $("anProg").hidden = true;
+      if (s.state === "error") { $("anMsg").textContent = "Analysis failed: " + s.error; return; }
+      showTracks(s.tracks);
+    }
+  }, 1000);
+};
+
+async function showTracks(tracks) {
+  let saved = [];
+  try { saved = await api("/api/projects/" + current.id + "/mappings"); } catch (e) { /* none */ }
+  trackMaps = {};
+  saved.forEach((m) => { trackMaps[m.track] = m; });
+  const ul = $("tracks");
+  ul.textContent = "";
+  $("facesCard").hidden = false;
+  if (!tracks.length) {
+    $("anMsg").textContent = "No faces found in the first 10 seconds.";
+    return;
+  }
+  tracks.forEach((t) => {
+    const li = document.createElement("li");
+    li.className = "track";
+    li.style.display = "block";
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:10px;align-items:center";
+    const img = document.createElement("img");
+    img.src = "/api/projects/" + current.id + "/thumbs/" + t.id + ".jpg?_=" + Date.now();
+    const txt = document.createElement("div");
+    txt.className = "info";
+    txt.textContent = "Person #" + t.id + " · seen in " + t.count + " frames";
+    const status = document.createElement("div");
+    status.className = "info";
+    status.textContent = trackMaps[t.id] ? "Mapped: " + (trackMaps[t.id].label || "photo set") : "Not selected";
+    txt.appendChild(status);
+    row.append(img, txt);
+    row.onclick = () => li.classList.toggle("on");
+
+    const map = document.createElement("div");
+    map.className = "map";
+    const label = document.createElement("input");
+    label.type = "text";
+    label.placeholder = "Character name (e.g. Hero)";
+    label.value = trackMaps[t.id] ? trackMaps[t.id].label : "";
+    const file = document.createElement("input");
+    file.type = "file";
+    file.accept = "image/*";
+    const cl = document.createElement("label");
+    cl.className = "check";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    const sp = document.createElement("span");
+    sp.textContent = "The person in this photo has consented to this use.";
+    cl.append(cb, sp);
+    const up = document.createElement("button");
+    up.className = "small";
+    up.textContent = "Use this photo";
+    const msg = document.createElement("p");
+    msg.className = "msg";
+    up.onclick = async () => {
+      msg.textContent = "";
+      if (!file.files[0]) { msg.textContent = "Choose a photo."; return; }
+      if (!cb.checked) { msg.textContent = "Consent is required."; return; }
+      const fd = new FormData();
+      fd.append("photo", file.files[0]);
+      fd.append("consent", "yes");
+      try {
+        const r = await api("/api/projects/" + current.id + "/refs", { method: "POST", body: fd });
+        trackMaps[t.id] = { track: t.id, ref: r.name, label: label.value.trim(), consent: true };
+        status.textContent = "Mapped: " + (label.value.trim() || "photo set") + " (not saved yet)";
+        msg.textContent = "Photo added. Tap Save below.";
+      } catch (e) { msg.textContent = e.message; }
+    };
+    map.append(label, file, cl, up, msg);
+    li.append(row, map);
+    ul.appendChild(li);
+  });
+}
+
+$("saveMap").onclick = async () => {
+  const list = Object.values(trackMaps);
+  $("mapMsg").textContent = "";
+  if (!list.length) { $("mapMsg").textContent = "Map at least one person first."; return; }
+  try {
+    await api("/api/projects/" + current.id + "/mappings", {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(list) });
+    $("mapMsg").textContent = "Saved " + list.length + " mapping(s).";
+  } catch (e) { $("mapMsg").textContent = e.message; }
+};
