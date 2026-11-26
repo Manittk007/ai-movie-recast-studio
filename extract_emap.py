@@ -69,10 +69,10 @@ with open(MODEL, "rb") as fh:
                     dims.append(d)
         elif num == 2:
             dtype = v
-        elif num == 9 and wt == 2:
+                elif num in (4, 9) and wt == 2:
             raw = v
     print("Last stored table: dims=%s dtype=%s" % (dims, dtype))
-    if dtype != 1 or raw is None or dims != [512, 512]:
+        if dtype != 1 or raw is None or dims != [512, 512] or raw[1] - raw[0] != 512 * 512 * 4:
         sys.exit("Unexpected table. Send me the line above.")
     arr = np.frombuffer(buf[raw[0]:raw[1]], dtype="<f4").reshape(512, 512).copy()
     np.save(OUT, arr)
